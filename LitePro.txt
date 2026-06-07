@@ -1,0 +1,435 @@
+
+
+# Check for Administrator Privileges
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Warning "CRITICAL: This script MUST be executed as Administrator! Please re-run PowerShell as Admin."
+    Exit
+}
+
+# ---------------------------------------------------------
+# POWERSHELL WINDOW AUTO-RESIZER ENGINE
+# ---------------------------------------------------------
+function Adjust-ConsoleWindow {
+    $buffer = $Host.UI.RawUI.BufferSize
+    $window = $Host.UI.RawUI.WindowSize
+    
+    $buffer.Width = 75
+    $buffer.Height = 1000
+    $window.Width = 75
+    $window.Height = 28
+    
+    $Host.UI.RawUI.BufferSize = $buffer
+    $Host.UI.RawUI.WindowSize = $window
+}
+
+# ---------------------------------------------------------
+# SYSTEM HARDWARE HUD SCANNER ENGINE
+# ---------------------------------------------------------
+function Get-HWID {
+    $board = Get-CimInstance Win32_BaseBoard | Select-Object -ExpandProperty SerialNumber
+    $cleanBoard = ($board -replace '\s+','').Trim()
+    if ([string]::IsNullOrEmpty($cleanBoard) -or $cleanBoard -eq "None") {
+        $cleanBoard = "SYS-COMMUNITY-HWID"
+    }
+    return $cleanBoard
+}
+
+function Get-SystemSpecs {
+    $specs = @{}
+    $specs["PCName"] = $env:COMPUTERNAME
+    
+    $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty Name
+    $specs["CPU"] = ($cpu -replace '\s+', ' ').Trim()
+    
+    $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.AdapterDACType -ne "Internal" -and $_.InstalledDisplayDrivers } | Select-Object -First 1 -ExpandProperty Name
+    if (-not $gpu) { $gpu = Get-CimInstance Win32_VideoController | Select-Object -First 1 -ExpandProperty Name }
+    $specs["GPU"] = $gpu
+    
+    $totalRamBytes = Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum | Select-Object -ExpandProperty Sum
+    $specs["RAM"] = "$([Math]::Round($totalRamBytes / 1GB)) GB"
+    
+    return $specs
+}
+# ---------------------------------------------------------
+# NATIVE INLINE ANIMATION INPUT CONTROLLERS
+# ---------------------------------------------------------
+function Read-Host-Animated {
+    param([string]$PromptText, [string]$TitleText)
+    
+    $FullText = "    $TitleText        "
+    Write-Host "$PromptText" -NoNewline -ForegroundColor Yellow
+    
+    # วิ่งวนข้อความบน Title Bar รอระหว่างพิมพ์คำสั่ง
+    $InputString = ""
+    while ($true) {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            if ($key.Key -eq [ConsoleKey]::Enter) {
+                Write-Host ""
+                break
+            }
+            if ($key.Key -eq [ConsoleKey]::Backspace) {
+                if ($InputString.Length -gt 0) {
+                    $InputString = $InputString.Substring(0, $InputString.Length - 1)
+                    Write-Host "`b `b" -NoNewline
+                }
+            } else {
+                $InputString += $key.KeyChar
+                Write-Host $key.KeyChar -NoNewline -ForegroundColor White
+            }
+        }
+        
+        # เลื่อนตัวอักษรไปข้างหน้า
+        $host.UI.RawUI.WindowTitle = $FullText
+        $FullText = $FullText.Substring(1) + $FullText.Substring(0, 1)
+        Start-Sleep -Milliseconds 120
+    }
+    return $InputString
+}
+function Show-AuthScreen {
+    Adjust-ConsoleWindow
+    Clear-Host
+    $hwid = Get-HWID
+    $specs = Get-SystemSpecs
+    $ValidKeys = @("dev", "ELITE-TWEAKS-999")
+
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host "         LITEPRO PERFORMANCE SUITE LICENSE MANAGER            " -ForegroundColor Green
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host " STATUS      : UNAUTHORIZED" -ForegroundColor Red
+    Write-Host " YOUR HWID   : $hwid" -ForegroundColor Yellow
+    Write-Host "-----------------------------------------------------------" -ForegroundColor Gray
+    Write-Host " DEVICE NAME : $($specs['PCName'])" -ForegroundColor Gray
+	Write-Host "" -ForegroundColor White
+    Write-Host " PROCESSOR   : $($specs['CPU'])" -ForegroundColor Gray
+	Write-Host "" -ForegroundColor White
+    Write-Host " GRAPHICS    : $($specs['GPU'])" -ForegroundColor Gray
+	Write-Host "" -ForegroundColor White
+    Write-Host " MEMORY pool : $($specs['RAM'])" -ForegroundColor Gray
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host ""
+    # เรียกใช้ระบบอนิเมชั่นตรงจุดนี้
+    # เรียกใช้ระบบอนิเมชั่นตรงจุดนี้
+    $userKey = Read-Host-Animated -PromptText " Enter License Key : " -TitleText "LitePro Loader"
+    if ($ValidKeys -contains $userKey.Trim().ToUpper()) {
+        Write-Host "`n[+] Key Verified! Booting Core Engine Packs..." -ForegroundColor Green
+        Start-Sleep -Seconds 1
+        return $true
+    } else {
+        Write-Host "`n[X] INVALID LICENSE KEY! Access Denied." -ForegroundColor Red
+        Start-Sleep -Seconds 2
+        return $false
+    }
+}
+
+# ---------------------------------------------------------
+# MAIN INTERACTIVE CORE
+# ---------------------------------------------------------
+function Show-WelcomeHeader {
+    Adjust-ConsoleWindow
+    Clear-Host
+    $hwid = Get-HWID
+    $specs = Get-SystemSpecs
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host "     LITEPRO PERFORMANCE SUITE  [EXTREME EDITION]       " -ForegroundColor Green
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host " LICENSE : VERIFIED " -ForegroundColor Green
+    Write-Host " HWID    : $hwid" -ForegroundColor Gray
+    Write-Host " RIG     : $($specs['CPU']) | $($specs['RAM'])" -ForegroundColor Gray
+    Write-Host "===========================================================" -ForegroundColor Cyan
+    Write-Host " [1]  INSTALL OPTIMIZE ALL " -ForegroundColor Green
+    Write-Host " [2]  FIVEM QoS  NETWORK POLICY" -ForegroundColor white
+    Write-Host " [3]  ROLLBACK ALL" -ForegroundColor Yellow
+    Write-Host " [4]  EXIT SUITE" -ForegroundColor Red
+    Write-Host "===========================================================" -ForegroundColor Cyan
+}
+
+function Global-Optimize {
+    Write-Host "`n[+] Initializing Advanced Gaming Optimization Stack..." -ForegroundColor Cyan
+    Start-Sleep -Milliseconds 500
+
+    # 1. NETWORK & GPEDIT UNLIMIT (QoS Packet Scheduler)
+    Write-Host "[>] Unlimiting Bandwidth & Tuning TCP Network Stack..." -ForegroundColor White
+    $QosPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Psched"
+    if (-not (Test-Path $QosPath)) { New-Item -Path $QosPath -Force | Out-Null }
+    New-ItemProperty -Path $QosPath -Name "NonBestEffortLimit" -Value 0 -PropertyType DWord -Force | Out-Null
+
+    netsh int tcp set global congestionprovider=bbr | Out-Null
+    netsh int tcp set global autotuninglevel=normal | Out-Null
+    netsh int tcp set global ecncapability=enabled | Out-Null
+    netsh int tcp set global timestamps=disabled | Out-Null
+    netsh int tcp set global rss=enabled | Out-Null
+    netsh int tcp set global rsc=enabled | Out-Null
+    netsh int tcp set global dca=enabled | Out-Null
+    netsh int tcp set global netdma=enabled | Out-Null
+
+    # 2. NETWORK ADAPTER LATENCY STRIPPING
+    Write-Host "[>] Stripping Power-Saving Delays from LAN Controller..." -ForegroundColor White
+    $LANPaths = Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}" -ErrorAction SilentlyContinue
+    foreach ($lan in $LANPaths) {
+        $path = $lan.PSPath
+        if (Get-ItemProperty -Path $path -Name "DriverDesc" -ErrorAction SilentlyContinue) {
+            New-ItemProperty -Path $path -Name "*EEELinkAdvertisement" -Value 0 -PropertyType String -Force -ErrorAction SilentlyContinue | Out-Null
+            New-ItemProperty -Path $path -Name "*EnergyEfficientEthernet" -Value 0 -PropertyType String -Force -ErrorAction SilentlyContinue | Out-Null
+            New-ItemProperty -Path $path -Name "*GreenEthernet" -Value 0 -PropertyType String -Force -ErrorAction SilentlyContinue | Out-Null
+            New-ItemProperty -Path $path -Name "PowerDownPll" -Value 0 -PropertyType String -Force -ErrorAction SilentlyContinue | Out-Null
+        }
+    }
+
+    # 3. MOUSE & KEYBOARD LATENCY TWEAKS
+    Write-Host "[>] Decreasing Mouse & Keyboard Hardware Input Buffers..." -ForegroundColor White
+    $MousePath = "HKCU:\Control Panel\Mouse"
+    New-ItemProperty -Path $MousePath -Name "MouseSpeed" -Value "0" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $MousePath -Name "MouseThreshold1" -Value "0" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $MousePath -Name "MouseThreshold2" -Value "0" -PropertyType String -Force | Out-Null
+
+    $KeyPath = "HKCU:\Control Panel\Accessibility\Keyboard Response"
+    if (-not (Test-Path $KeyPath)) { New-Item -Path $KeyPath -Force | Out-Null }
+    New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardDelay" -Value "0" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardSpeed" -Value "31" -PropertyType String -Force | Out-Null
+
+    $PriorityPath = "HKLM:\SYSTEM\CurrentControlSet\Control\PriorityControl"
+    New-ItemProperty -Path $PriorityPath -Name "Win32PrioritySeparation" -Value 26 -PropertyType DWord -Force | Out-Null
+
+    # 4. MSI MODE ACTIVATION (GPU Express Lane Force)
+    Write-Host "[>] Transforming GPU Interrupt Priority Interface to MSI Mode..." -ForegroundColor White
+    $VideoControllers = Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Enum\PCI" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -eq "Device Parameters" }
+    foreach ($vc in $VideoControllers) {
+        $msiPath = "$($vc.PSPath)\Interrupt Management\MessageSignaledInterruptProperties"
+        if (Test-Path "$($vc.PSPath)\Interrupt Management") {
+            if (-not (Test-Path $msiPath)) { New-Item -Path $msiPath -Force | Out-Null }
+            New-ItemProperty -Path $msiPath -Name "MSISupported" -Value 1 -PropertyType DWord -Force | Out-Null
+            New-ItemProperty -Path $msiPath -Name "MessageNumberLimit" -Value 1 -PropertyType DWord -Force | Out-Null
+        }
+    }
+
+    # 5. DYNAMIC BCDOS PERFORMANCE TWEAKS
+    Write-Host "[>] Adjusting BCD System Clock Constants for Micro-Stutter Fix..." -ForegroundColor White
+    bcdedit /set useplatformclock false | Out-Null
+    bcdedit /set disabledynamictick yes | Out-Null
+
+    # 6. WINDOWS TELEMETRY & BLOATWARE SILENCER
+    Write-Host "[>] Killing Windows Background Telemetry Reporting Processes..." -ForegroundColor White
+    Stop-Service -Name "DiagTrack" -ErrorAction SilentlyContinue
+    Set-Service -Name "DiagTrack" -StartupType Disabled -ErrorAction SilentlyContinue
+    $TelemetryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection"
+    if (-not (Test-Path $TelemetryPath)) { New-Item -Path $TelemetryPath -Force | Out-Null }
+    New-ItemProperty -Path $TelemetryPath -Name "AllowTelemetry" -Value 0 -PropertyType DWord -Force | Out-Null
+
+    # 7. PREMIUM GENERAL FPS BOOST & GAMEDVR OFF
+    Write-Host "[>] Elevating Game Thread Scheduling parameters..." -ForegroundColor White
+    $SysProfilePath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
+    New-ItemProperty -Path $SysProfilePath -Name "NetworkThrottlingIndex" -Value 0xffffffff -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $SysProfilePath -Name "SystemResponsiveness" -Value 0 -PropertyType DWord -Force | Out-Null
+
+    $GamesProfilePath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"
+    if (Test-Path $GamesProfilePath) {
+        New-ItemProperty -Path $GamesProfilePath -Name "GPU Priority" -Value 8 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "Priority" -Value 6 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "Scheduling Category" -Value "High" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "SFIO Priority" -Value "High" -PropertyType String -Force | Out-Null
+    }
+    New-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 0 -PropertyType DWord -Force | Out-Null
+    powercfg /h off | Out-Null
+
+    # 8. EXTREME FIVEM CPU KERNEL INJECTIONS
+    Write-Host "[>] Locking FiveM Process Scheduling Matrix into High Priority..." -ForegroundColor Green
+    $FiveMProcesses = @("FiveM.exe", "FiveM_GTAProcess.exe", "FiveM_b2699_GTAProcess.exe", "FiveM_b3095_GTAProcess.exe", "FiveM_b3258_GTAProcess.exe", "GTA5.exe")
+    foreach ($proc in $FiveMProcesses) {
+        $RegistryIFEOPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\$proc"
+        if (-not (Test-Path $RegistryIFEOPath)) { New-Item -Path $RegistryIFEOPath -Force | Out-Null }
+        if (-not (Test-Path "$RegistryIFEOPath\PerfOptions")) { New-Item -Path "$RegistryIFEOPath\PerfOptions" -Force | Out-Null }
+        New-ItemProperty -Path "$RegistryIFEOPath\PerfOptions" -Name "CpuPriorityClass" -Value 3 -PropertyType DWord -Force | Out-Null
+    }
+
+    $MemoryManagerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"
+    New-ItemProperty -Path $MemoryManagerPath -Name "LargeSystemCache" -Value 1 -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $MemoryManagerPath -Name "SystemPages" -Value 0xffffffff -PropertyType DWord -Force | Out-Null
+
+    # 9. BACKGROUND AUTO-FLUSH RAM STANDBY CACHE (PATCHED PROPERLY)
+    Write-Host "[>] Injecting 5-Min Scheduled Auto-RAM Engine (Fix Leak)..." -ForegroundColor Green
+    $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -Command `"[System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers();`""
+    $Trigger = New-ScheduledTaskTrigger -AtLogOn
+    $Trigger.Repetition.Interval = (New-TimeSpan -Minutes 5)
+    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    Register-ScheduledTask -TaskName "LitePro_Memory_AutoFlush" -Action $Action -Trigger $Trigger -Settings $Settings -User "SYSTEM" -Force | Out-Null
+
+    # 10. DEEP STORAGE & POWERSHELL HISTORY JUNK CLEANER ENGINE
+    Write-Host "[>] Purging Deep Storage Junk & PowerShell History..." -ForegroundColor Yellow
+    
+    # Target common Windows junk paths
+    $JunkTargets = @(
+        "$env:USERPROFILE\AppData\Local\Temp\*",
+        "$env:SystemRoot\Temp\*",
+        "$env:SystemRoot\Prefetch\*",
+        "$env:SystemRoot\SoftwareDistribution\Download\*",
+        "$env:LOCALAPPDATA\CrashDumps\*",
+        "$env:ProgramData\Microsoft\Windows\WER\*"
+    )
+    foreach ($target in $JunkTargets) {
+        Remove-Item -Path $target -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+
+    # 🔥 NEW: Clear PowerShell Console History File Data
+    Clear-History -ErrorAction SilentlyContinue
+    $HistoryPath = "$env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
+    if (Test-Path $HistoryPath) {
+        Clear-Content -Path $HistoryPath -ErrorAction SilentlyContinue
+    }
+
+    # Flush DNS Resolvers
+    ipconfig /flushdns | Out-Null
+    netsh int ip reset | Out-Null
+    netsh winsock reset | Out-Null
+
+    Write-Host "`n[✓] ALL PERFORMANCE & DEEP CLEAN MODULES APPLIED!" -ForegroundColor Green
+    Write-Host "[!] A System REBOOT is recommended to lock in all engine changes." -ForegroundColor Yellow
+    Read-Host "`nPress Enter to return to Menu..."
+}
+
+function Game-QosPolicy {
+    Write-Host "`n===========================================================" -ForegroundColor Blue
+    Write-Host "          FIVE M ENGINE VIP NETWORK INJECTION              " -ForegroundColor Blue
+    Write-Host "===========================================================" -ForegroundColor Blue
+    Write-Host "[>] Routing DSCP 46 Lanes onto all FiveM subsystems..." -ForegroundColor Green
+    
+    $FiveMNetworkProcesses = @("FiveM.exe", "FiveM_GTAProcess.exe", "FiveM_b2699_GTAProcess.exe", "FiveM_b2802_GTAProcess.exe", "FiveM_b3095_GTAProcess.exe", "FiveM_b3258_GTAProcess.exe", "FiveM_b3184_GTAProcess.exe", "GTA5.exe")
+
+    if (-not (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS")) {
+        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS" -Force | Out-Null
+    }
+
+    foreach ($proc in $FiveMNetworkProcesses) {
+        $PolicyRegistryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS\Priority_Pass_$proc"
+        if (-not (Test-Path $PolicyRegistryPath)) { New-Item -Path $PolicyRegistryPath -Force | Out-Null }
+
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Version" -Value "1.0" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Application Name" -Value $proc -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Protocol" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Local Port" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Local IP" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Local IP Prefix Length" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Remote Port" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Remote IP" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Remote IP Prefix Length" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "DSCP Value" -Value "46" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $PolicyRegistryPath -Name "Throttle Rate" -Value "-1" -PropertyType String -Force | Out-Null
+    }
+    Write-Host "[✓] FiveM Network VIP Priority Pass Active!" -ForegroundColor Green
+    Write-Host "-----------------------------------------------------------" -ForegroundColor Gray
+
+    Write-Host "Register an additional custom game? (e.g., valorant.exe)" -ForegroundColor White
+    $customGame = Read-Host " Enter Executable Target Name (Or press Enter to skip)"
+    
+    if (-not ([string]::IsNullOrWhiteSpace($customGame))) {
+        if (-not $customGame.EndsWith(".exe")) { $customGame += ".exe" }
+        $CustomPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS\Priority_Pass_$customGame"
+        if (-not (Test-Path $CustomPath)) { New-Item -Path $CustomPath -Force | Out-Null }
+
+        New-ItemProperty -Path $CustomPath -Name "Version" -Value "1.0" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Application Name" -Value $customGame -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Protocol" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Local Port" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Local IP" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Local IP Prefix Length" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Remote Port" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Remote IP" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Remote IP Prefix Length" -Value "*" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "DSCP Value" -Value "46" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $CustomPath -Name "Throttle Rate" -Value "-1" -PropertyType String -Force | Out-Null
+        Write-Host "[✓] SUCCESS: $customGame added to High Priority Pass." -ForegroundColor Green
+    }
+    Read-Host "`nPress Enter to return to Menu..."
+}
+
+function Global-Rollback {
+    Write-Host "`n[-] Commencing Factory Configuration Restoration..." -ForegroundColor Yellow
+    Start-Sleep -Milliseconds 500
+
+    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Psched" -Name "NonBestEffortLimit" -ErrorAction SilentlyContinue
+    netsh int tcp set global congestionprovider=default | Out-Null
+    netsh int tcp set global autotuninglevel=normal | Out-Null
+    netsh int tcp set global ecncapability=default | Out-Null
+    netsh int tcp set global timestamps=default | Out-Null
+    
+    # Restore Network LAN Controller parameters
+    $LANPaths = Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}" -ErrorAction SilentlyContinue
+    foreach ($lan in $LANPaths) {
+        $path = $lan.PSPath
+        Remove-ItemProperty -Path $path -Name "*EEELinkAdvertisement" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $path -Name "*EnergyEfficientEthernet" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $path -Name "*GreenEthernet" -ErrorAction SilentlyContinue
+        Remove-ItemProperty -Path $path -Name "PowerDownPll" -ErrorAction SilentlyContinue
+    }
+
+    # Restore Inputs
+    $MousePath = "HKCU:\Control Panel\Mouse"
+    New-ItemProperty -Path $MousePath -Name "MouseSpeed" -Value "1" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $MousePath -Name "MouseThreshold1" -Value "6" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $MousePath -Name "MouseThreshold2" -Value "10" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardDelay" -Value "1" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "KeyboardSpeed" -Value "31" -PropertyType String -Force | Out-Null
+
+    # Restore BCD Constants
+    bcdedit /deletevalue useplatformclock -ErrorAction SilentlyContinue | Out-Null
+    bcdedit /deletevalue disabledynamictick -ErrorAction SilentlyContinue | Out-Null
+
+    # Restore Telemetry Processing
+    Set-Service -Name "DiagTrack" -StartupType Automatic -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -ErrorAction SilentlyContinue
+
+    # Restore Windows Scheduler Profiles
+    $SysProfilePath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"
+    New-ItemProperty -Path $SysProfilePath -Name "NetworkThrottlingIndex" -Value 10 -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $SysProfilePath -Name "SystemResponsiveness" -Value 14 -PropertyType DWord -Force | Out-Null
+
+    $GamesProfilePath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"
+    if (Test-Path $GamesProfilePath) {
+        New-ItemProperty -Path $GamesProfilePath -Name "GPU Priority" -Value 8 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "Priority" -Value 2 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "Scheduling Category" -Value "Medium" -PropertyType String -Force | Out-Null
+        New-ItemProperty -Path $GamesProfilePath -Name "SFIO Priority" -Value "Normal" -PropertyType String -Force | Out-Null
+    }
+
+    $FiveMProcesses = @("FiveM.exe", "FiveM_GTAProcess.exe", "FiveM_b2699_GTAProcess.exe", "FiveM_b3095_GTAProcess.exe", "FiveM_b3258_GTAProcess.exe", "GTA5.exe")
+    foreach ($proc in $FiveMProcesses) {
+        Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\$proc" -Recurse -ErrorAction SilentlyContinue | Out-Null
+    }
+
+    $MemoryManagerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"
+    New-ItemProperty -Path $MemoryManagerPath -Name "LargeSystemCache" -Value 0 -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $MemoryManagerPath -Name "SystemPages" -Value 0 -PropertyType DWord -Force | Out-Null
+
+    New-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 1 -PropertyType DWord -Force | Out-Null
+
+    if (Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS") {
+        Remove-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\QoS" -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+
+    # Delete Auto-Flush Background Task
+    Unregister-ScheduledTask -TaskName "LitePro_Memory_AutoFlush" -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+
+    powercfg /h on | Out-Null
+    netsh int ip reset | Out-Null
+    netsh winsock reset | Out-Null
+    
+    Write-Host "`n[✓] ROLLBACK RUN COMPLETE: Factory defaults restored." -ForegroundColor Green
+    Read-Host "`nPress Enter to return to Menu..."
+}
+
+# --- Runtime Entry Bootstrapper ---
+$IsAuthenticated = Show-AuthScreen
+if ($IsAuthenticated) {
+    do {
+        Show-WelcomeHeader
+		Write-Host ""
+        $choice = Read-Host "Select execution path (1-4)"
+        switch ($choice) {
+            '1' { Global-Optimize }
+            '2' { Game-QosPolicy }
+            '3' { Global-Rollback }
+            '4' { Write-Host "`nExiting Suite. GG, Have Fun! "; break }
+            default { Write-Host "Invalid parameter target. Try again." -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        }
+    } while ($choice -ne '4')
+}
